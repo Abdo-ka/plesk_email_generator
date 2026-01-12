@@ -1,7 +1,7 @@
 {
   "name": "plesk-email-generator",
-  "version": "6.0.0",
-  "description": "Production-ready CLI tool for automated Plesk email account creation from CSV data",
+  "version": "7.0.0",
+  "description": "Production-ready CLI tool for automated Plesk email account creation and deletion from CSV data",
   "main": "src/index.js",
   "bin": {
     "plesk-email-gen": "./src/index.js"
@@ -16,10 +16,13 @@
     "cli",
     "automation",
     "bulk-creation",
+    "bulk-deletion",
     "student-emails",
     "bulk-email",
     "plesk-cli",
-    "email-management"
+    "email-management",
+    "antivirus",
+    "antispam"
   ],
   "author": "",
   "license": "MIT",

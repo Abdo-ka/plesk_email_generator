@@ -26,7 +26,7 @@ const { isValidDegree } = require('./email-generator');
  */
 
 // Required CSV columns - must be present in CSV file
-const REQUIRED_FIELDS = ['full_name', 'degree', 'graduation_year', 'student_card_number'];
+const REQUIRED_FIELDS = ['full_name', 'degree', 'registration_date', 'years_to_graduate', 'student_card_number'];
 
 /**
  * Validate a single student record
@@ -34,13 +34,15 @@ const REQUIRED_FIELDS = ['full_name', 'degree', 'graduation_year', 'student_card
  * Performs comprehensive validation on a student record:
  * 1. Checks all required fields are present and non-empty
  * 2. Validates degree code (B, M, or P)
- * 3. Validates graduation year (4 digits)
- * 4. Validates student card number (numeric, 4+ digits)
+ * 3. Validates registration date (YYYY format)
+ * 4. Validates years to graduate (numeric, 1-10)
+ * 5. Validates student card number (numeric, 4+ digits)
  * 
  * @param {Object} student - Student record from CSV
  * @param {string} student.full_name - Student's full name
  * @param {string} student.degree - Degree code (B/M/P)
- * @param {string} student.graduation_year - Graduation year (4 digits)
+ * @param {string} student.registration_date - Registration year (YYYY format)
+ * @param {string} student.years_to_graduate - Expected years to graduate (1-10)
  * @param {string} student.student_card_number - Student card number
  * @param {number} lineNumber - Line number in CSV file (for error reporting)
  * 
@@ -49,7 +51,7 @@ const REQUIRED_FIELDS = ['full_name', 'degree', 'graduation_year', 'student_card
  *   - errors {Array<string>} - Array of error messages (empty if valid)
  * 
  * @example
- * const student = { full_name: 'John Doe', degree: 'B', graduation_year: '2024', student_card_number: '123456789012' };
+ * const student = { full_name: 'John Doe', degree: 'B', registration_date: '2020', years_to_graduate: '4', student_card_number: '123456789012' };
  * const result = validateStudent(student, 2);
  * // Returns: { valid: true, errors: [] }
  */
@@ -74,10 +76,21 @@ function validateStudent(student, lineNumber) {
         errors.push(`Line ${lineNumber}: Invalid degree '${student.degree}'. Must be B, M, or P`);
     }
 
-    // Validate graduation year (must be 4 digits)
-    const year = student.graduation_year.trim();
-    if (!/^\d{4}$/.test(year)) {
-        errors.push(`Line ${lineNumber}: Invalid graduation year '${year}'. Must be 4 digits`);
+    // Validate registration date (must be 4 digits)
+    const registrationDate = student.registration_date.trim();
+    if (!/^\d{4}$/.test(registrationDate)) {
+        errors.push(`Line ${lineNumber}: Invalid registration date '${registrationDate}'. Must be 4 digits (YYYY format)`);
+    }
+
+    // Validate years to graduate (must be numeric, 1-10)
+    const yearsToGrad = student.years_to_graduate.trim();
+    if (!/^\d+$/.test(yearsToGrad)) {
+        errors.push(`Line ${lineNumber}: Invalid years_to_graduate '${yearsToGrad}'. Must be numeric`);
+    } else {
+        const years = parseInt(yearsToGrad, 10);
+        if (years < 1 || years > 10) {
+            errors.push(`Line ${lineNumber}: years_to_graduate '${yearsToGrad}' must be between 1 and 10`);
+        }
     }
 
     // Validate student card number (must be numeric and at least 4 digits)
@@ -100,20 +113,26 @@ function validateStudent(student, lineNumber) {
  * Cleans and standardizes student record:
  * - Trims whitespace from all fields
  * - Converts degree to uppercase
+ * - Calculates graduation year from registration date and years to graduate
  * 
  * @param {Object} student - Raw student data from CSV
  * @returns {Object} Normalized student data ready for processing
  * 
  * @example
- * const raw = { full_name: '  John Doe  ', degree: 'b', graduation_year: '2024', student_card_number: '123456789012' };
+ * const raw = { full_name: '  John Doe  ', degree: 'b', registration_date: '2020', years_to_graduate: '4', student_card_number: '123456789012' };
  * const normalized = normalizeStudent(raw);
- * // Returns: { full_name: 'John Doe', degree: 'B', graduation_year: '2024', student_card_number: '123456789012' }
+ * // Returns: { full_name: 'John Doe', degree: 'B', registration_date: '2020', graduation_year: '2024', student_card_number: '123456789012' }
  */
 function normalizeStudent(student) {
+    const registrationDate = parseInt(student.registration_date.trim(), 10);
+    const yearsToGrad = parseInt(student.years_to_graduate.trim(), 10);
+    const graduationYear = registrationDate + yearsToGrad;
+
     return {
         full_name: student.full_name.trim(),
         degree: student.degree.trim().toUpperCase(),
-        graduation_year: student.graduation_year.trim(),
+        registration_date: student.registration_date.trim(),
+        graduation_year: graduationYear.toString(),
         student_card_number: student.student_card_number.trim()
     };
 }
@@ -221,7 +240,7 @@ function detectDuplicates(emailAccounts) {
  * This is the main entry point for CSV processing.
  * 
  * @param {string} filePath - Path to CSV file
- * @param {string} universityCode - University code for email address generation (e.g., 'ALEP')
+ * @param {string} facultyCode - Faculty code for email address generation (e.g., 'IT', 'ENG')
  * 
  * @returns {Promise<Object>} Complete validation result:
  *   - success {boolean} - True if no errors found
@@ -230,14 +249,14 @@ function detectDuplicates(emailAccounts) {
  *   - duplicates {Array<string>} - List of duplicate email addresses
  * 
  * @example
- * const result = await parseAndValidate('./students.csv', 'ALEP');
+ * const result = await parseAndValidate('./students.csv', 'IT');
  * if (result.success) {
  *   console.log(`Ready to create ${result.students.length} accounts`);
  * } else {
  *   console.error('Validation failed:', result.errors);
  * }
  */
-async function parseAndValidate(filePath, universityCode) {
+async function parseAndValidate(filePath, facultyCode) {
     const { generateEmailAccount } = require('./email-generator');
 
     // Parse CSV
@@ -254,7 +273,7 @@ async function parseAndValidate(filePath, universityCode) {
 
     // Generate email accounts
     const emailAccounts = students.map(student =>
-        generateEmailAccount(student, universityCode)
+        generateEmailAccount(student, facultyCode)
     );
 
     // Detect duplicates

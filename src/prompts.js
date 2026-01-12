@@ -164,34 +164,50 @@ function validateFilePath(filePath) {
 }
 
 /**
- * Collect all required inputs from user
+ * Ask user to choose operation mode
+ * 
+ * Prompts user to choose between create and delete operations.
+ * 
+ * @returns {Promise<string>} Selected mode: 'create' or 'delete'
+ */
+async function askOperationMode() {
+  console.log(chalk.cyan.bold('\nOperation Mode Selection\n'));
+  console.log(chalk.white('  1. Create email accounts'));
+  console.log(chalk.white('  2. Delete email accounts'));
+  console.log('');
+
+  let mode = '';
+  while (mode !== '1' && mode !== '2') {
+    mode = await ask(chalk.yellow('Select operation mode (1 or 2)'));
+    if (mode !== '1' && mode !== '2') {
+      console.log(chalk.red('Please enter 1 for Create or 2 for Delete'));
+    }
+  }
+
+  return mode === '1' ? 'create' : 'delete';
+}
+
+/**
+ * Collect inputs for create operation
  * 
  * Interactive prompts user for:
- * 1. University Code - Used in email address generation
+ * 1. Faculty Code - Used in email address generation
  * 2. CSV File Path - Location of student data file
  * 
- * Validates inputs and prompts again if invalid.
- * Displays formatted input prompts with color coding.
- * 
  * @returns {Promise<Object>} Configuration object with properties:
- *   - universityCode {string} - University code for emails
+ *   - mode {string} - 'create'
+ *   - facultyCode {string} - Faculty code for emails
  *   - csvPath {string} - Path to CSV file
- *   - dryRun {boolean} - Always false (used for future features)
- * 
- * @example
- * const config = await collectInputs();
- * // User prompted for university code and CSV path
- * // Returns: { universityCode: 'ALEP', csvPath: './data/students.csv', dryRun: false }
  */
-async function collectInputs() {
-  console.log(chalk.cyan.bold('\nConfiguration Setup\n'));
+async function collectCreateInputs() {
+  console.log(chalk.cyan.bold('\nCreate Mode Configuration\n'));
 
-  // University code
-  let universityCode = '';
-  while (!universityCode) {
-    universityCode = await ask(chalk.yellow('Enter university code (e.g., UNI)'));
-    if (!universityCode) {
-      console.log(chalk.red('University code is required'));
+  // Faculty code
+  let facultyCode = '';
+  while (!facultyCode) {
+    facultyCode = await ask(chalk.yellow('Enter Faculty Code (e.g., IT, ENG)'));
+    if (!facultyCode) {
+      console.log(chalk.red('Faculty Code is required'));
     }
   }
 
@@ -210,10 +226,74 @@ async function collectInputs() {
   console.log(''); // Empty line for spacing
 
   return {
-    universityCode,
+    mode: 'create',
+    facultyCode,
     csvPath,
     dryRun: false
   };
+}
+
+/**
+ * Collect inputs for delete operation
+ * 
+ * Interactive prompts user for:
+ * 1. Faculty Code - Used to filter emails
+ * 2. Graduation Date - Used to filter emails
+ * 
+ * @returns {Promise<Object>} Configuration object with properties:
+ *   - mode {string} - 'delete'
+ *   - facultyCode {string} - Faculty code to filter
+ *   - graduationDate {string} - Graduation date to filter (YYYY format)
+ */
+async function collectDeleteInputs() {
+  console.log(chalk.cyan.bold('\nDelete Mode Configuration\n'));
+
+  // Faculty code
+  let facultyCode = '';
+  while (!facultyCode) {
+    facultyCode = await ask(chalk.yellow('Enter Faculty Code to delete (e.g., IT, ENG)'));
+    if (!facultyCode) {
+      console.log(chalk.red('Faculty Code is required'));
+    }
+  }
+
+  // Graduation date
+  let graduationDate = '';
+  while (!graduationDate || !/^\d{4}$/.test(graduationDate)) {
+    graduationDate = await ask(chalk.yellow('Enter Graduation Date (YYYY format, e.g., 2024)'));
+    if (!graduationDate) {
+      console.log(chalk.red('Graduation Date is required'));
+    } else if (!/^\d{4}$/.test(graduationDate)) {
+      console.log(chalk.red('Graduation Date must be 4 digits (YYYY format)'));
+      graduationDate = '';
+    }
+  }
+
+  console.log(''); // Empty line for spacing
+
+  return {
+    mode: 'delete',
+    facultyCode,
+    graduationDate
+  };
+}
+
+/**
+ * Collect all required inputs from user
+ * 
+ * Interactive prompts user for operation mode, then collects
+ * specific inputs based on selected mode.
+ * 
+ * @returns {Promise<Object>} Configuration object
+ */
+async function collectInputs() {
+  const mode = await askOperationMode();
+
+  if (mode === 'create') {
+    return await collectCreateInputs();
+  } else {
+    return await collectDeleteInputs();
+  }
 }
 
 module.exports = {
@@ -221,5 +301,8 @@ module.exports = {
   askPassword,
   askYesNo,
   collectInputs,
+  askOperationMode,
+  collectCreateInputs,
+  collectDeleteInputs,
   validateFilePath
 };

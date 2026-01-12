@@ -30,44 +30,47 @@ const DEGREE_NAMES = {
 // Quota mapping (in MB)
 const QUOTA_MAP = {
     'B': 5,
-    'M': 25,
-    'P': 5
+    'M': 15,
+    'P': 20
 };
 
 /**
  * Generate email address based on student data
  * 
  * Creates email address following the pattern:
- * {degree}{graduationYear}{universityCode}{last4CardDigits}@student.alepuniv.edu.sy
+ * {degree}{registrationYearLast2Digits}{facultyCode}{last4CardDigits}@student.alepuniv.edu.sy
  * 
  * Example:
  * - Degree: B (Bachelor)
- * - Year: 2024
- * - University: ALEP
+ * - Registration Date: 2020 (becomes 20)
+ * - Faculty: IT
  * - Card: 123456789012 (last 4 digits: 9012)
- * - Result: B2024ALEP9012@student.alepuniv.edu.sy
+ * - Result: B20IT9012@student.alepuniv.edu.sy
  * 
  * @param {Object} student - Student data object
  * @param {string} student.degree - Degree code (B/M/P)
- * @param {string} student.graduation_year - Graduation year (4 digits)
+ * @param {string} student.registration_date - Registration year (4 digits)
  * @param {string} student.student_card_number - Full student card number (minimum 4 digits)
- * @param {string} universityCode - University code (e.g., 'ALEP', 'UNI')
+ * @param {string} facultyCode - Faculty code (e.g., 'IT', 'ENG')
  * 
  * @returns {string} Complete email address
  * 
  * @example
- * const student = { degree: 'B', graduation_year: '2024', student_card_number: '123456789012' };
- * const email = generateEmail(student, 'ALEP');
- * // Returns: 'B2024ALEP9012@student.alepuniv.edu.sy'
+ * const student = { degree: 'B', registration_date: '2020', student_card_number: '123456789012' };
+ * const email = generateEmail(student, 'IT');
+ * // Returns: 'B20IT9012@student.alepuniv.edu.sy'
  */
-function generateEmail(student, universityCode) {
-    const { degree, graduation_year, student_card_number } = student;
+function generateEmail(student, facultyCode) {
+    const { degree, registration_date, student_card_number } = student;
+
+    // Get last 2 digits of registration year
+    const yearShort = registration_date.slice(-2);
 
     // Get last 4 digits of card number
     const last4Digits = student_card_number.slice(-4);
 
-    // Build email: degree + year + university code + last 4 digits
-    const localPart = `${degree}${graduation_year}${universityCode}${last4Digits}`;
+    // Build email: degree + 2-digit year + faculty code + last 4 digits
+    const localPart = `${degree}${yearShort}${facultyCode}${last4Digits}`;
 
     return `${localPart}@${DOMAIN}`;
 }
@@ -98,8 +101,8 @@ function generatePassword(studentCardNumber) {
  * 
  * Returns mailbox quota according to business rules:
  * - Bachelor (B): 5 MB
- * - Master (M): 25 MB
- * - PhD (P): 5 MB
+ * - Master (M): 15 MB
+ * - PhD (P): 20 MB
  * - Unknown: 5 MB (default fallback)
  * 
  * @param {string} degree - Degree code (B/M/P)
@@ -108,7 +111,7 @@ function generatePassword(studentCardNumber) {
  * 
  * @example
  * const quota = getQuota('M');
- * // Returns: 25
+ * // Returns: 15
  */
 function getQuota(degree) {
     return QUOTA_MAP[degree] || 5; // Default to 5MB if unknown
@@ -118,7 +121,7 @@ function getQuota(degree) {
  * Generate description for email account
  * 
  * Creates human-readable description for Plesk mailbox.
- * Format: Student: {full_name} {graduation_year} {degree_full_name}
+ * Format: Student: {full_name} Registration: {registration_date} Graduation: {graduation_year} {degree_full_name}
  * 
  * Converts degree code to full degree name:
  * - B becomes Bachelor
@@ -127,21 +130,22 @@ function getQuota(degree) {
  * 
  * @param {Object} student - Student data object
  * @param {string} student.full_name - Student's full name
- * @param {string} student.graduation_year - Graduation year
+ * @param {string} student.registration_date - Registration year
+ * @param {string} student.graduation_year - Graduation year (calculated)
  * @param {string} student.degree - Degree code (B/M/P)
  * 
  * @returns {string} Formatted description string
  * 
  * @example
- * const student = { full_name: 'John Doe', graduation_year: '2024', degree: 'B' };
+ * const student = { full_name: 'John Doe', registration_date: '2020', graduation_year: '2024', degree: 'B' };
  * const desc = generateDescription(student);
- * // Returns: 'Student: John Doe 2024 Bachelor'
+ * // Returns: 'Student: John Doe Registration: 2020 Graduation: 2024 Bachelor'
  */
 function generateDescription(student) {
-    const { full_name, graduation_year, degree } = student;
+    const { full_name, registration_date, graduation_year, degree } = student;
     const degreeName = DEGREE_NAMES[degree] || degree;
 
-    return `Student: ${full_name} ${graduation_year} ${degreeName}`;
+    return `Student: ${full_name} Registration: ${registration_date} Graduation: ${graduation_year} ${degreeName}`;
 }
 
 /**
@@ -159,9 +163,10 @@ function generateDescription(student) {
  * @param {Object} student - Student data object
  * @param {string} student.full_name - Student's full name
  * @param {string} student.degree - Degree code (B/M/P)
- * @param {string} student.graduation_year - 4-digit graduation year
+ * @param {string} student.registration_date - Registration year (4 digits)
+ * @param {string} student.graduation_year - Graduation year (4 digits, calculated)
  * @param {string} student.student_card_number - Full student card number
- * @param {string} universityCode - University code for email generation
+ * @param {string} facultyCode - Faculty code for email generation
  * 
  * @returns {Object} Complete email account object:
  *   - email {string} - Generated email address
@@ -174,20 +179,21 @@ function generateDescription(student) {
  * const student = {
  *   full_name: 'John Doe',
  *   degree: 'B',
+ *   registration_date: '2020',
  *   graduation_year: '2024',
  *   student_card_number: '123456789012'
  * };
- * const account = generateEmailAccount(student, 'ALEP');
+ * const account = generateEmailAccount(student, 'IT');
  * // Returns: {
- * //   email: 'B2024ALEP9012@student.alepuniv.edu.sy',
+ * //   email: 'B20IT9012@student.alepuniv.edu.sy',
  * //   password: '123456789012@ale&.com',
  * //   quota: 5,
- * //   description: 'Student: John Doe 2024 Bachelor',
+ * //   description: 'Student: John Doe Registration: 2020 Graduation: 2024 Bachelor',
  * //   student: { name: 'John Doe', degree: 'B', ... }
  * // }
  */
-function generateEmailAccount(student, universityCode) {
-    const email = generateEmail(student, universityCode);
+function generateEmailAccount(student, facultyCode) {
+    const email = generateEmail(student, facultyCode);
     const password = generatePassword(student.student_card_number);
     const quota = getQuota(student.degree);
     const description = generateDescription(student);
@@ -200,6 +206,7 @@ function generateEmailAccount(student, universityCode) {
         student: {
             name: student.full_name,
             degree: student.degree,
+            registrationDate: student.registration_date,
             graduationYear: student.graduation_year,
             cardNumber: student.student_card_number
         }
