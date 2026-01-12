@@ -93,7 +93,7 @@ function displayBanner() {
  */
 function displayConfig(config) {
     console.log(chalk.cyan.bold('Configuration Summary:\n'));
-    
+
     if (config.mode === 'create') {
         console.log(chalk.white(`  Operation:        ${chalk.bold('CREATE')}`));
         console.log(chalk.white(`  Faculty Code:     ${chalk.bold(config.facultyCode)}`));
