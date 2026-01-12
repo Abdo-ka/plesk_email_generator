@@ -1,0 +1,48 @@
+{
+  "name": "plesk-email-generator",
+  "version": "6.0.0",
+  "description": "Production-ready CLI tool for automated Plesk email account creation from CSV data",
+  "main": "src/index.js",
+  "bin": {
+    "plesk-email-gen": "./src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node src/csv-parser.js --test && node src/email-generator.js --test"
+  },
+  "keywords": [
+    "plesk",
+    "email",
+    "cli",
+    "automation",
+    "bulk-creation",
+    "student-emails",
+    "bulk-email",
+    "plesk-cli",
+    "email-management"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/plesk-email-generator.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/plesk-email-generator/issues"
+  },
+  "homepage": "https://github.com/yourusername/plesk-email-generator#readme",
+  "dependencies": {
+    "csv-parser": "^3.0.0",
+    "chalk": "^4.1.2",
+    "ora": "^5.4.1"
+  },
+  "files": [
+    "src/",
+    "examples/",
+    "README.md",
+    "LICENSE"
+  ]
+}
