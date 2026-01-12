@@ -2,10 +2,37 @@
 
 /**
  * Plesk Email Account Generator
- * Main CLI entry point
+ * ===============================
+ * Main CLI Entry Point
  * 
- * Production-ready script for automated Plesk email account creation
- * from CSV student data
+ * Production-ready script for automated bulk creation of student email accounts
+ * in Plesk from CSV data. Orchestrates the entire workflow from user input to
+ * completion with comprehensive error handling and reporting.
+ * 
+ * Workflow:
+ * 1. Display welcome banner
+ * 2. Collect user inputs (university code, CSV file path)
+ * 3. Display configuration summary
+ * 4. Clear previous logs
+ * 5. Test Plesk CLI availability
+ * 6. Parse and validate CSV file
+ * 7. Create email accounts in Plesk
+ * 8. Log all operations
+ * 9. Display statistics and generate reports
+ * 
+ * Features:
+ * - Interactive CLI with color-coded output
+ * - Real-time progress tracking
+ * - Comprehensive error handling
+ * - Detailed logging and reporting
+ * - Safe exit codes for automation
+ * 
+ * Exit Codes:
+ * - 0: All operations completed successfully
+ * - 1: One or more operations failed or fatal error occurred
+ * 
+ * @module index
+ * @version 6.0.0
  */
 
 const chalk = require('chalk');
@@ -17,6 +44,12 @@ const { logSuccess, logError, clearLogs, Statistics } = require('./logger');
 
 /**
  * Display welcome banner
+ * 
+ * Clears console and shows styled application banner.
+ * Displays application name, version, and purpose.
+ * Uses cyan bold styling for visual emphasis.
+ * 
+ * @private
  */
 function displayBanner() {
     console.clear();
@@ -31,6 +64,21 @@ function displayBanner() {
 
 /**
  * Display configuration summary
+ * 
+ * Shows user-provided configuration before processing:
+ * - University Code
+ * - CSV File Path
+ * - Mode (PRODUCTION)
+ * 
+ * Provides opportunity for user to verify settings.
+ * Uses color coding for clear presentation.
+ * 
+ * @param {Object} config - Configuration object from collectInputs()
+ * @param {string} config.universityCode - University code
+ * @param {string} config.csvPath - Path to CSV file
+ * @param {boolean} config.dryRun - Dry-run mode flag
+ * 
+ * @private
  */
 function displayConfig(config) {
     console.log(chalk.cyan.bold('Configuration Summary:\n'));
@@ -42,6 +90,21 @@ function displayConfig(config) {
 
 /**
  * Main execution function
+ * 
+ * Orchestrates the complete workflow:
+ * 1. User interaction and configuration
+ * 2. Validation and testing
+ * 3. CSV parsing and email generation
+ * 4. Mailbox creation in Plesk
+ * 5. Logging and reporting
+ * 
+ * Handles all errors gracefully and provides detailed feedback.
+ * Sets appropriate exit codes for automation integration.
+ * 
+ * @async
+ * @returns {Promise<void>} Resolves when processing complete
+ * 
+ * @throws {Error} Fatal errors are caught and logged before exiting
  */
 async function main() {
     try {

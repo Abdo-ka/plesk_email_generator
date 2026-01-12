@@ -3,12 +3,30 @@ const fs = require('fs');
 const chalk = require('chalk');
 
 /**
- * Prompts module - Handles all interactive CLI prompts
- * Provides secure password input and input validation
+ * Prompts Module
+ * ===============
+ * Handles all interactive CLI prompts, user input collection, and validation.
+ * Provides a user-friendly interface for collecting configuration.
+ * 
+ * Features:
+ * - Text input prompts with default values
+ * - Password input with masked display
+ * - Yes/No prompts
+ * - File path validation
+ * - Error messaging and guidance
+ * 
+ * @module prompts
  */
 
 /**
  * Create readline interface for user input
+ * 
+ * Initializes a new readline interface for reading from stdin
+ * and writing to stdout.
+ * 
+ * @returns {readline.Interface} Readline interface instance
+ * 
+ * @private
  */
 function createInterface() {
   return readline.createInterface({
@@ -19,9 +37,18 @@ function createInterface() {
 
 /**
  * Ask a question and return the answer
- * @param {string} question - The question to ask
- * @param {string} defaultValue - Optional default value
- * @returns {Promise<string>} User's answer
+ * 
+ * Prompts the user with a question and returns their input.
+ * Displays optional default value in gray. If user doesn't input
+ * anything, returns the default value.
+ * 
+ * @param {string} question - The question to display to user
+ * @param {string} [defaultValue=''] - Optional default value if user presses Enter
+ * @returns {Promise<string>} Promise resolving to user's answer (trimmed)
+ * 
+ * @example
+ * const name = await ask('Enter your name', 'John');
+ * // User sees: "Enter your name (default: John): "
  */
 function ask(question, defaultValue = '') {
   const rl = createInterface();
@@ -40,8 +67,16 @@ function ask(question, defaultValue = '') {
 
 /**
  * Ask for password with masked input
- * @param {string} question - The question to ask
- * @returns {Promise<string>} User's password
+ * 
+ * Prompts for password input while masking the displayed characters.
+ * Displays asterisks instead of actual characters typed.
+ * 
+ * @param {string} question - The question/prompt to display
+ * @returns {Promise<string>} Promise resolving to the password (trimmed)
+ * 
+ * @example
+ * const password = await askPassword('Enter password');
+ * // User sees: "Enter password: ****" (as they type)
  */
 function askPassword(question) {
   return new Promise((resolve) => {
@@ -82,9 +117,18 @@ function askPassword(question) {
 
 /**
  * Ask yes/no question
+ * 
+ * Prompts user with a yes/no question and returns boolean answer.
+ * Accepts 'y', 'yes', 'n', 'no' (case-insensitive).
+ * Defaults to provided value if invalid answer.
+ * 
  * @param {string} question - The question to ask
- * @param {boolean} defaultValue - Default value (true/false)
- * @returns {Promise<boolean>} User's answer as boolean
+ * @param {boolean} [defaultValue=true] - Default value if Enter pressed or invalid answer
+ * @returns {Promise<boolean>} Promise resolving to boolean answer
+ * 
+ * @example
+ * const proceed = await askYesNo('Continue?', true);
+ * // User sees: "Continue? (Y/n): "
  */
 async function askYesNo(question, defaultValue = true) {
   const defaultText = defaultValue ? 'Y/n' : 'y/N';
@@ -99,8 +143,17 @@ async function askYesNo(question, defaultValue = true) {
 
 /**
  * Validate file path exists
- * @param {string} filePath - Path to validate
- * @returns {boolean} True if file exists
+ * 
+ * Checks if a file exists at the given path.
+ * Returns false if path doesn't exist or is not a file.
+ * 
+ * @param {string} filePath - Path to file to validate
+ * @returns {boolean} True if file exists and is readable, false otherwise
+ * 
+ * @example
+ * if (validateFilePath('./data.csv')) {
+ *   console.log('CSV file found');
+ * }
  */
 function validateFilePath(filePath) {
   try {
@@ -112,7 +165,23 @@ function validateFilePath(filePath) {
 
 /**
  * Collect all required inputs from user
- * @returns {Promise<Object>} Object containing all user inputs
+ * 
+ * Interactive prompts user for:
+ * 1. University Code - Used in email address generation
+ * 2. CSV File Path - Location of student data file
+ * 
+ * Validates inputs and prompts again if invalid.
+ * Displays formatted input prompts with color coding.
+ * 
+ * @returns {Promise<Object>} Configuration object with properties:
+ *   - universityCode {string} - University code for emails
+ *   - csvPath {string} - Path to CSV file
+ *   - dryRun {boolean} - Always false (used for future features)
+ * 
+ * @example
+ * const config = await collectInputs();
+ * // User prompted for university code and CSV path
+ * // Returns: { universityCode: 'ALEP', csvPath: './data/students.csv', dryRun: false }
  */
 async function collectInputs() {
   console.log(chalk.cyan.bold('\nConfiguration Setup\n'));
@@ -151,5 +220,6 @@ module.exports = {
   ask,
   askPassword,
   askYesNo,
-  collectInputs
+  collectInputs,
+  validateFilePath
 };

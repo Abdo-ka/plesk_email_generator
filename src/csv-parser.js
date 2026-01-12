@@ -4,18 +4,54 @@ const { isValidDegree } = require('./email-generator');
 
 /**
  * CSV Parser Module
- * Handles CSV file reading, validation, and duplicate detection
+ * ==================
+ * 
+ * Responsible for reading, parsing, validating, and processing CSV files.
+ * Handles student record validation with detailed error reporting.
+ * 
+ * Features:
+ * - CSV file reading and parsing using csv-parser library
+ * - Individual student record validation with line-number reporting
+ * - Student data normalization (trimming, case conversion)
+ * - Duplicate email detection across student list
+ * - Comprehensive error reporting with specific validation messages
+ * 
+ * Validation Rules:
+ * - All required fields must be present and non-empty
+ * - Degree must be B, M, or P
+ * - Graduation year must be exactly 4 digits
+ * - Student card number must be numeric and at least 4 digits
+ * 
+ * @module csv-parser
  */
 
-// Required CSV columns
+// Required CSV columns - must be present in CSV file
 const REQUIRED_FIELDS = ['full_name', 'degree', 'graduation_year', 'student_card_number'];
 
 /**
  * Validate a single student record
  * 
+ * Performs comprehensive validation on a student record:
+ * 1. Checks all required fields are present and non-empty
+ * 2. Validates degree code (B, M, or P)
+ * 3. Validates graduation year (4 digits)
+ * 4. Validates student card number (numeric, 4+ digits)
+ * 
  * @param {Object} student - Student record from CSV
- * @param {number} lineNumber - Line number in CSV (for error reporting)
- * @returns {Object} Validation result { valid: boolean, errors: string[] }
+ * @param {string} student.full_name - Student's full name
+ * @param {string} student.degree - Degree code (B/M/P)
+ * @param {string} student.graduation_year - Graduation year (4 digits)
+ * @param {string} student.student_card_number - Student card number
+ * @param {number} lineNumber - Line number in CSV file (for error reporting)
+ * 
+ * @returns {Object} Validation result object:
+ *   - valid {boolean} - True if all validations passed
+ *   - errors {Array<string>} - Array of error messages (empty if valid)
+ * 
+ * @example
+ * const student = { full_name: 'John Doe', degree: 'B', graduation_year: '2024', student_card_number: '123456789012' };
+ * const result = validateStudent(student, 2);
+ * // Returns: { valid: true, errors: [] }
  */
 function validateStudent(student, lineNumber) {
     const errors = [];
@@ -59,10 +95,19 @@ function validateStudent(student, lineNumber) {
 }
 
 /**
- * Normalize student data (trim whitespace, uppercase degree)
+ * Normalize student data
  * 
- * @param {Object} student - Raw student data
- * @returns {Object} Normalized student data
+ * Cleans and standardizes student record:
+ * - Trims whitespace from all fields
+ * - Converts degree to uppercase
+ * 
+ * @param {Object} student - Raw student data from CSV
+ * @returns {Object} Normalized student data ready for processing
+ * 
+ * @example
+ * const raw = { full_name: '  John Doe  ', degree: 'b', graduation_year: '2024', student_card_number: '123456789012' };
+ * const normalized = normalizeStudent(raw);
+ * // Returns: { full_name: 'John Doe', degree: 'B', graduation_year: '2024', student_card_number: '123456789012' }
  */
 function normalizeStudent(student) {
     return {
@@ -76,8 +121,22 @@ function normalizeStudent(student) {
 /**
  * Parse and validate CSV file
  * 
- * @param {string} filePath - Path to CSV file
- * @returns {Promise<Object>} Result object with students array and errors array
+ * Reads CSV file and parses into student records.
+ * Validates each row and collects any validation errors.
+ * Uses csv-parser library for streaming CSV parsing.
+ * 
+ * @param {string} filePath - Absolute or relative path to CSV file
+ * 
+ * @returns {Promise<Object>} Result object:
+ *   - students {Array<Object>} - Array of valid, normalized student records
+ *   - errors {Array<string>} - Array of validation error messages with line numbers
+ * 
+ * @throws {Error} If CSV file cannot be read or is malformed
+ * 
+ * @example
+ * const result = await parseCSV('./data/students.csv');
+ * console.log(`Found ${result.students.length} valid students`);
+ * console.log(`Found ${result.errors.length} validation errors`);
  */
 function parseCSV(filePath) {
     return new Promise((resolve, reject) => {
@@ -112,8 +171,22 @@ function parseCSV(filePath) {
 /**
  * Detect duplicate emails in student list
  * 
- * @param {Array} emailAccounts - Array of email account objects
- * @returns {Array} Array of duplicate email addresses
+ * Scans through generated email accounts and identifies any duplicate
+ * email addresses. This catches cases where multiple students would
+ * generate the same email (e.g., same degree, year, and last 4 card digits).
+ * 
+ * @param {Array<Object>} emailAccounts - Array of email account objects, each with an 'email' property
+ * 
+ * @returns {Array<string>} Array of duplicate email addresses (each duplicate listed once)
+ * 
+ * @example
+ * const accounts = [
+ *   { email: 'B2024ALEP9012@alepuniv.edu.sy', ... },
+ *   { email: 'B2024ALEP9012@alepuniv.edu.sy', ... },  // Duplicate
+ *   { email: 'M2025ALEP1234@alepuniv.edu.sy', ... }
+ * ];
+ * const dupes = detectDuplicates(accounts);
+ * // Returns: ['B2024ALEP9012@alepuniv.edu.sy']
  */
 function detectDuplicates(emailAccounts) {
     const emailMap = new Map();
@@ -138,9 +211,31 @@ function detectDuplicates(emailAccounts) {
 /**
  * Parse CSV and return validated students with generated email data
  * 
+ * Complete validation pipeline that:
+ * 1. Parses CSV file
+ * 2. Validates all student records
+ * 3. Generates email accounts for valid students
+ * 4. Detects duplicate emails
+ * 5. Returns success status with all data and errors
+ * 
+ * This is the main entry point for CSV processing.
+ * 
  * @param {string} filePath - Path to CSV file
- * @param {string} universityCode - University code for email generation
- * @returns {Promise<Object>} Result with validated students and errors
+ * @param {string} universityCode - University code for email address generation (e.g., 'ALEP')
+ * 
+ * @returns {Promise<Object>} Complete validation result:
+ *   - success {boolean} - True if no errors found
+ *   - students {Array<Object>} - Array of email account objects ready for creation
+ *   - errors {Array<string>} - All validation and duplicate errors
+ *   - duplicates {Array<string>} - List of duplicate email addresses
+ * 
+ * @example
+ * const result = await parseAndValidate('./students.csv', 'ALEP');
+ * if (result.success) {
+ *   console.log(`Ready to create ${result.students.length} accounts`);
+ * } else {
+ *   console.error('Validation failed:', result.errors);
+ * }
  */
 async function parseAndValidate(filePath, universityCode) {
     const { generateEmailAccount } = require('./email-generator');

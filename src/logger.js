@@ -3,7 +3,25 @@ const path = require('path');
 
 /**
  * Logger Module
- * Handles logging to files and generating reports
+ * ==============
+ * 
+ * Handles all logging operations and statistics tracking.
+ * Provides file-based logging and JSON report generation.
+ * 
+ * Features:
+ * - Success/error logging to separate files
+ * - ISO timestamp formatting
+ * - Statistics tracking (success/failure counts)
+ * - JSON report generation
+ * - Formatted console output
+ * - Log file management (clearing)
+ * 
+ * Log Files:
+ * - logs/success.log - Successful email creations
+ * - logs/error.log - Failed email creations with reasons
+ * - report.json - JSON summary of all operations
+ * 
+ * @module logger
  */
 
 const LOGS_DIR = path.join(__dirname, '..', 'logs');
@@ -13,6 +31,12 @@ const REPORT_FILE = path.join(__dirname, '..', 'report.json');
 
 /**
  * Ensure logs directory exists
+ * 
+ * Creates logs/ directory if it doesn't exist.
+ * Uses recursive flag to create parent directories if needed.
+ * Called automatically before any logging operation.
+ * 
+ * @private
  */
 function ensureLogsDir() {
     if (!fs.existsSync(LOGS_DIR)) {
@@ -22,7 +46,13 @@ function ensureLogsDir() {
 
 /**
  * Get current timestamp in ISO format
- * @returns {string} ISO timestamp
+ * 
+ * Returns current date/time in ISO 8601 format with timezone.
+ * Used for all log entries and reports.
+ * 
+ * @returns {string} ISO timestamp (e.g., '2026-01-12T10:30:45+03:00')
+ * 
+ * @private
  */
 function getTimestamp() {
     return new Date().toISOString();
@@ -30,11 +60,26 @@ function getTimestamp() {
 
 /**
  * Format log entry
- * @param {string} studentName - Student name
+ * 
+ * Creates a standardized log entry string with:
+ * - ISO timestamp
+ * - Student name
+ * - Email address
+ * - Status (SUCCESS/FAILED)
+ * - Reason (for failures only)
+ * 
+ * @param {string} studentName - Student's full name
  * @param {string} email - Email address
- * @param {string} status - Status (SUCCESS/FAILED)
- * @param {string} reason - Optional reason for failure
- * @returns {string} Formatted log entry
+ * @param {string} status - Status string ('SUCCESS' or 'FAILED')
+ * @param {string} [reason=''] - Failure reason (optional, only for failures)
+ * 
+ * @returns {string} Formatted log entry with newline
+ * 
+ * @private
+ * 
+ * @example
+ * const entry = formatLogEntry('John Doe', 'B2024ALEP9012@alepuniv.edu.sy', 'SUCCESS');
+ * // Returns: '[2026-01-12T10:30:45+03:00] Student: John Doe | Email: B2024ALEP9012@alepuniv.edu.sy | Status: SUCCESS\n'
  */
 function formatLogEntry(studentName, email, status, reason = '') {
     const timestamp = getTimestamp();
@@ -62,8 +107,15 @@ function writeToLog(filePath, content) {
 
 /**
  * Log successful email creation
- * @param {string} studentName - Student name
- * @param {string} email - Email address
+ * 
+ * Appends success entry to logs/success.log file.
+ * Creates log directory and file if they don't exist.
+ * 
+ * @param {string} studentName - Student's full name
+ * @param {string} email - Created email address
+ * 
+ * @example
+ * logSuccess('John Doe', 'B2024ALEP9012@student.alepuniv.edu.sy');
  */
 function logSuccess(studentName, email) {
     ensureLogsDir();
@@ -73,9 +125,17 @@ function logSuccess(studentName, email) {
 
 /**
  * Log failed email creation
- * @param {string} studentName - Student name
- * @param {string} email - Email address
- * @param {string} reason - Reason for failure
+ * 
+ * Appends error entry to logs/error.log file.
+ * Includes reason for failure for troubleshooting.
+ * Creates log directory and file if they don't exist.
+ * 
+ * @param {string} studentName - Student's full name
+ * @param {string} email - Email address that failed to create
+ * @param {string} reason - Reason for failure (e.g., 'Mailbox already exists')
+ * 
+ * @example
+ * logError('John Doe', 'B2024ALEP9012@student.alepuniv.edu.sy', 'Mailbox already exists');
  */
 function logError(studentName, email, reason) {
     ensureLogsDir();
@@ -85,6 +145,17 @@ function logError(studentName, email, reason) {
 
 /**
  * Clear existing log files
+ * 
+ * Deletes all log files and reports from previous runs:
+ * - logs/success.log
+ * - logs/error.log
+ * - report.json
+ * 
+ * Called at the start of each run to ensure clean state.
+ * Creates logs directory if it doesn't exist.
+ * 
+ * @example
+ * clearLogs(); // Clears all previous logs
  */
 function clearLogs() {
     ensureLogsDir();
@@ -104,6 +175,25 @@ function clearLogs() {
 
 /**
  * Statistics tracker class
+ * 
+ * Tracks processing metrics for all mailbox creation operations.
+ * Maintains counts of successes and failures, plus detailed failure information.
+ * Generates summary reports and formatted console output.
+ * 
+ * Usage:
+ * 1. Create instance at start of processing
+ * 2. Call recordSuccess() or recordFailure() for each operation
+ * 3. Call printSummary() to display results
+ * 4. Call saveReport() to generate JSON report
+ * 
+ * @class
+ * 
+ * @example
+ * const stats = new Statistics();
+ * stats.recordSuccess();
+ * stats.recordFailure('John Doe', 'email@example.com', 'Mailbox exists');
+ * stats.printSummary(chalk);
+ * const reportPath = stats.saveReport();
  */
 class Statistics {
     constructor() {
@@ -115,6 +205,12 @@ class Statistics {
 
     /**
      * Record successful creation
+     * 
+     * Increments total processed and successful counts.
+     * Call this method after each successfully created mailbox.
+     * 
+     * @example
+     * stats.recordSuccess();
      */
     recordSuccess() {
         this.totalProcessed++;
@@ -123,9 +219,17 @@ class Statistics {
 
     /**
      * Record failed creation
-     * @param {string} name - Student name
-     * @param {string} email - Email address
-     * @param {string} reason - Failure reason
+     * 
+     * Increments total processed and failed counts.
+     * Stores failure details for reporting.
+     * Call this method after each failed mailbox creation.
+     * 
+     * @param {string} name - Student's full name
+     * @param {string} email - Email address that failed
+     * @param {string} reason - Reason for failure
+     * 
+     * @example
+     * stats.recordFailure('John Doe', 'B2024ALEP9012@student.alepuniv.edu.sy', 'Mailbox already exists');
      */
     recordFailure(name, email, reason) {
         this.totalProcessed++;
@@ -135,7 +239,20 @@ class Statistics {
 
     /**
      * Get statistics summary
-     * @returns {Object} Statistics object
+     * 
+     * Returns complete statistics object suitable for JSON export.
+     * Includes timestamp, counts, and failure details.
+     * 
+     * @returns {Object} Statistics summary:
+     *   - timestamp {string} - ISO timestamp of summary generation
+     *   - total_processed {number} - Total accounts processed
+     *   - successful {number} - Successfully created count
+     *   - failed {number} - Failed creation count
+     *   - failed_students {Array<Object>} - Array of failure details
+     * 
+     * @example
+     * const summary = stats.getSummary();
+     * console.log(`Success rate: ${summary.successful}/${summary.total_processed}`);
      */
     getSummary() {
         return {
@@ -149,6 +266,18 @@ class Statistics {
 
     /**
      * Save report to JSON file
+     * 
+     * Generates report.json in project root with complete statistics.
+     * Includes timestamp, counts, and detailed failure information.
+     * Uses 2-space indentation for readability.
+     * 
+     * @returns {string|null} Path to report file if successful, null if failed
+     * 
+     * @example
+     * const reportPath = stats.saveReport();
+     * if (reportPath) {
+     *   console.log(`Report saved to: ${reportPath}`);
+     * }
      */
     saveReport() {
         const summary = this.getSummary();
@@ -164,7 +293,20 @@ class Statistics {
 
     /**
      * Print summary to console
-     * @param {Object} chalk - Chalk instance for colored output
+     * 
+     * Displays formatted statistics summary with color coding:
+     * - Cyan headers and borders
+     * - Green for successful operations
+     * - Red for failed operations
+     * - Gray for detailed failure information
+     * 
+     * Includes list of all failed students with reasons.
+     * 
+     * @param {Object} chalk - Chalk instance for colored console output
+     * 
+     * @example
+     * const chalk = require('chalk');
+     * stats.printSummary(chalk);
      */
     printSummary(chalk) {
         console.log('\n' + chalk.cyan.bold('═══════════════════════════════════════'));

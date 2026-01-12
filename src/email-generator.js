@@ -1,7 +1,21 @@
 /**
  * Email Generator Module
- * Handles email address generation, password creation, and quota assignment
- * based on business rules
+ * =======================
+ * 
+ * Responsible for generating email addresses, passwords, and account metadata
+ * according to university business rules.
+ * 
+ * Email Format: {degree}{year}{universityCode}{last4CardDigits}@student.alepuniv.edu.sy
+ * Password Format: {fullCardNumber}@ale&.com
+ * 
+ * Business Rules:
+ * - Bachelor (B) accounts: 5MB quota
+ * - Master (M) accounts: 25MB quota
+ * - PhD (P) accounts: 5MB quota
+ * 
+ * Domain: student.alepuniv.edu.sy (configured as constant)
+ * 
+ * @module email-generator
  */
 
 const DOMAIN = 'student.alepuniv.edu.sy';
@@ -22,14 +36,29 @@ const QUOTA_MAP = {
 
 /**
  * Generate email address based on student data
- * Format: {degree}{graduationYear}{universityCode}{last4CardDigits}@alepuniv.edu.sy
+ * 
+ * Creates email address following the pattern:
+ * {degree}{graduationYear}{universityCode}{last4CardDigits}@student.alepuniv.edu.sy
+ * 
+ * Example:
+ * - Degree: B (Bachelor)
+ * - Year: 2024
+ * - University: ALEP
+ * - Card: 123456789012 (last 4 digits: 9012)
+ * - Result: B2024ALEP9012@student.alepuniv.edu.sy
  * 
  * @param {Object} student - Student data object
  * @param {string} student.degree - Degree code (B/M/P)
  * @param {string} student.graduation_year - Graduation year (4 digits)
- * @param {string} student.student_card_number - Full student card number
- * @param {string} universityCode - University code
- * @returns {string} Generated email address
+ * @param {string} student.student_card_number - Full student card number (minimum 4 digits)
+ * @param {string} universityCode - University code (e.g., 'ALEP', 'UNI')
+ * 
+ * @returns {string} Complete email address
+ * 
+ * @example
+ * const student = { degree: 'B', graduation_year: '2024', student_card_number: '123456789012' };
+ * const email = generateEmail(student, 'ALEP');
+ * // Returns: 'B2024ALEP9012@student.alepuniv.edu.sy'
  */
 function generateEmail(student, universityCode) {
     const { degree, graduation_year, student_card_number } = student;
@@ -45,10 +74,20 @@ function generateEmail(student, universityCode) {
 
 /**
  * Generate password based on student card number
- * Format: {fullStudentCardNumber}@ale&.com
  * 
- * @param {string} studentCardNumber - Full student card number
+ * Creates password following the pattern:
+ * {fullStudentCardNumber}@ale&.com
+ * 
+ * Uses full card number for security, with special characters
+ * for password strength.
+ * 
+ * @param {string} studentCardNumber - Full student card number (all digits)
+ * 
  * @returns {string} Generated password
+ * 
+ * @example
+ * const password = generatePassword('123456789012');
+ * // Returns: '123456789012@ale&.com'
  */
 function generatePassword(studentCardNumber) {
     return `${studentCardNumber}@ale&.com`;
@@ -57,8 +96,19 @@ function generatePassword(studentCardNumber) {
 /**
  * Get quota in MB based on degree
  * 
+ * Returns mailbox quota according to business rules:
+ * - Bachelor (B): 5 MB
+ * - Master (M): 25 MB
+ * - PhD (P): 5 MB
+ * - Unknown: 5 MB (default fallback)
+ * 
  * @param {string} degree - Degree code (B/M/P)
- * @returns {number} Quota in MB
+ * 
+ * @returns {number} Quota in megabytes
+ * 
+ * @example
+ * const quota = getQuota('M');
+ * // Returns: 25
  */
 function getQuota(degree) {
     return QUOTA_MAP[degree] || 5; // Default to 5MB if unknown
@@ -66,10 +116,26 @@ function getQuota(degree) {
 
 /**
  * Generate description for email account
- * Format: Student: {full_name} {graduation_year} {degree}
+ * 
+ * Creates human-readable description for Plesk mailbox.
+ * Format: Student: {full_name} {graduation_year} {degree_full_name}
+ * 
+ * Converts degree code to full degree name:
+ * - B becomes Bachelor
+ * - M becomes Master
+ * - P becomes PhD
  * 
  * @param {Object} student - Student data object
- * @returns {string} Description string
+ * @param {string} student.full_name - Student's full name
+ * @param {string} student.graduation_year - Graduation year
+ * @param {string} student.degree - Degree code (B/M/P)
+ * 
+ * @returns {string} Formatted description string
+ * 
+ * @example
+ * const student = { full_name: 'John Doe', graduation_year: '2024', degree: 'B' };
+ * const desc = generateDescription(student);
+ * // Returns: 'Student: John Doe 2024 Bachelor'
  */
 function generateDescription(student) {
     const { full_name, graduation_year, degree } = student;
@@ -81,9 +147,44 @@ function generateDescription(student) {
 /**
  * Generate complete email account data for a student
  * 
+ * Master function that generates all data needed to create a mailbox:
+ * - Email address
+ * - Password
+ * - Mailbox quota
+ * - Account description
+ * - Student metadata
+ * 
+ * This is the primary function used by the CSV parser.
+ * 
  * @param {Object} student - Student data object
- * @param {string} universityCode - University code
- * @returns {Object} Complete email account data
+ * @param {string} student.full_name - Student's full name
+ * @param {string} student.degree - Degree code (B/M/P)
+ * @param {string} student.graduation_year - 4-digit graduation year
+ * @param {string} student.student_card_number - Full student card number
+ * @param {string} universityCode - University code for email generation
+ * 
+ * @returns {Object} Complete email account object:
+ *   - email {string} - Generated email address
+ *   - password {string} - Generated password
+ *   - quota {number} - Mailbox quota in MB
+ *   - description {string} - Account description
+ *   - student {Object} - Normalized student data
+ * 
+ * @example
+ * const student = {
+ *   full_name: 'John Doe',
+ *   degree: 'B',
+ *   graduation_year: '2024',
+ *   student_card_number: '123456789012'
+ * };
+ * const account = generateEmailAccount(student, 'ALEP');
+ * // Returns: {
+ * //   email: 'B2024ALEP9012@student.alepuniv.edu.sy',
+ * //   password: '123456789012@ale&.com',
+ * //   quota: 5,
+ * //   description: 'Student: John Doe 2024 Bachelor',
+ * //   student: { name: 'John Doe', degree: 'B', ... }
+ * // }
  */
 function generateEmailAccount(student, universityCode) {
     const email = generateEmail(student, universityCode);
@@ -108,8 +209,17 @@ function generateEmailAccount(student, universityCode) {
 /**
  * Validate degree code
  * 
- * @param {string} degree - Degree code to validate
- * @returns {boolean} True if valid
+ * Checks if degree code is one of the accepted values:
+ * B (Bachelor), M (Master), or P (PhD)
+ * 
+ * @param {string} degree - Degree code to validate (should be uppercase)
+ * 
+ * @returns {boolean} True if degree is B, M, or P; false otherwise
+ * 
+ * @example
+ * isValidDegree('B');  // true
+ * isValidDegree('M');  // true
+ * isValidDegree('X');  // false
  */
 function isValidDegree(degree) {
     return ['B', 'M', 'P'].includes(degree);

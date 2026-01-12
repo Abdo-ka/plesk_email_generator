@@ -5,7 +5,25 @@ const execAsync = promisify(exec);
 
 /**
  * Plesk Client Module
- * Handles interaction with Plesk CLI for email account management
+ * ====================
+ * 
+ * Handles all interaction with Plesk CLI for email account management.
+ * Wraps Plesk bin mail commands in JavaScript functions.
+ * 
+ * Features:
+ * - Mailbox existence checking
+ * - Mailbox creation with quota and description
+ * - Batch mailbox creation with progress tracking
+ * - Plesk CLI availability testing
+ * - Error handling and reporting
+ * 
+ * Plesk Commands Used:
+ * - plesk bin mail --info {email} - Check if mailbox exists
+ * - plesk bin mail --create {email} - Create new mailbox
+ * - plesk bin mail --update {email} - Update mailbox properties
+ * - plesk bin mail --help - Test CLI availability
+ * 
+ * @module plesk-client
  */
 
 const PLESK_BIN = 'plesk bin mail';
@@ -13,8 +31,26 @@ const DOMAIN = 'student.alepuniv.edu.sy';
 
 /**
  * Execute a shell command
- * @param {string} command - Command to execute
- * @returns {Promise<Object>} Result with stdout and stderr
+ * 
+ * Wraps Node.js child_process exec in a promise.
+ * Captures stdout and stderr for all commands.
+ * Returns success/failure status with output.
+ * 
+ * @param {string} command - Shell command to execute
+ * 
+ * @returns {Promise<Object>} Execution result:
+ *   - success {boolean} - True if command executed without error
+ *   - stdout {string} - Standard output (trimmed)
+ *   - stderr {string} - Standard error (trimmed)
+ *   - error {string} - Error message if failed
+ * 
+ * @private
+ * 
+ * @example
+ * const result = await executeCommand('plesk bin mail --help');
+ * if (result.success) {
+ *   console.log('Output:', result.stdout);
+ * }
  */
 async function executeCommand(command) {
     try {
@@ -36,8 +72,20 @@ async function executeCommand(command) {
 
 /**
  * Check if a mailbox exists
+ * 
+ * Queries Plesk to determine if mailbox already exists.
+ * Uses 'plesk bin mail --info' command which succeeds if mailbox exists,
+ * fails if mailbox not found.
+ * 
  * @param {string} email - Email address to check
- * @returns {Promise<boolean>} True if mailbox exists
+ * 
+ * @returns {Promise<boolean>} True if mailbox exists, false otherwise
+ * 
+ * @example
+ * const exists = await checkMailboxExists('B2024ALEP9012@student.alepuniv.edu.sy');
+ * if (exists) {
+ *   console.log('Mailbox already exists');
+ * }
  */
 async function checkMailboxExists(email) {
     const command = `${PLESK_BIN} --info ${email}`;
@@ -50,12 +98,43 @@ async function checkMailboxExists(email) {
 
 /**
  * Create a new mailbox in Plesk
- * @param {string} email - Email address
+ * 
+ * Creates a mailbox with specified credentials and settings.
+ * Process:
+ * 1. Check if mailbox already exists
+ * 2. If exists, return error
+ * 3. If not, create mailbox with password and quota
+ * 4. Update mailbox with description
+ * 
+ * Plesk commands executed:
+ * - plesk bin mail --info {email} (check existence)
+ * - plesk bin mail --create {email} -mailbox true -passwd '{password}' -mbox_quota {quota}M
+ * - plesk bin mail --update {email} -description "{description}"
+ * 
+ * @param {string} email - Email address to create
  * @param {string} password - Password for the mailbox
- * @param {number} quota - Quota in MB
- * @param {string} description - Mailbox description
- * @param {boolean} dryRun - If true, don't actually execute
- * @returns {Promise<Object>} Result object
+ * @param {number} quota - Quota in MB (e.g., 5, 25)
+ * @param {string} description - Mailbox description (visible in Plesk)
+ * @param {boolean} [dryRun=false] - If true, log command but don't execute
+ * 
+ * @returns {Promise<Object>} Creation result:
+ *   - success {boolean} - True if mailbox created successfully
+ *   - email {string} - Email address
+ *   - error {string} - Error message if failed
+ *   - message {string} - Success message if succeeded
+ *   - dryRun {boolean} - Present and true if dry-run mode
+ * 
+ * @example
+ * const result = await createMailbox(
+ *   'B2024ALEP9012@student.alepuniv.edu.sy',
+ *   '123456789012@ale&.com',
+ *   5,
+ *   'Student: John Doe 2024 Bachelor',
+ *   false
+ * );
+ * if (result.success) {
+ *   console.log('Mailbox created successfully');
+ * }
  */
 async function createMailbox(email, password, quota, description, dryRun = false) {
     // Check if mailbox already exists
@@ -111,10 +190,33 @@ async function createMailbox(email, password, quota, description, dryRun = false
 
 /**
  * Create multiple mailboxes from account data
- * @param {Array} accounts - Array of account objects
- * @param {boolean} dryRun - If true, don't actually execute
- * @param {Function} onProgress - Callback for progress updates
- * @returns {Promise<Array>} Array of results
+ * 
+ * Batch creates mailboxes sequentially (not parallel to avoid overwhelming Plesk).
+ * Provides progress updates via callback for each mailbox processed.
+ * 
+ * @param {Array<Object>} accounts - Array of account objects from email-generator
+ * @param {boolean} [dryRun=false] - If true, simulate creation without executing
+ * @param {Function} [onProgress=null] - Progress callback: (current, total, account) => void
+ * 
+ * @returns {Promise<Array<Object>>} Array of result objects, one per account:
+ *   Each result contains:
+ *   - success {boolean} - Creation success
+ *   - email {string} - Email address
+ *   - error {string} - Error if failed
+ *   - student {Object} - Student data from account
+ * 
+ * @example
+ * const accounts = [
+ *   { email: '...', password: '...', quota: 5, description: '...', student: {...} },
+ *   // ... more accounts
+ * ];
+ * 
+ * const results = await createMailboxes(accounts, false, (current, total, account) => {
+ *   console.log(`Processing ${current}/${total}: ${account.student.name}`);
+ * });
+ * 
+ * const successCount = results.filter(r => r.success).length;
+ * console.log(`Created ${successCount} mailboxes`);
  */
 async function createMailboxes(accounts, dryRun = false, onProgress = null) {
     const results = [];
@@ -145,7 +247,19 @@ async function createMailboxes(accounts, dryRun = false, onProgress = null) {
 
 /**
  * Test Plesk CLI availability
- * @returns {Promise<boolean>} True if Plesk CLI is available
+ * 
+ * Verifies that Plesk CLI is installed and accessible.
+ * Executes 'plesk bin mail --help' command.
+ * Should be called before attempting any mailbox operations.
+ * 
+ * @returns {Promise<boolean>} True if Plesk CLI is available and working
+ * 
+ * @example
+ * const available = await testPleskCLI();
+ * if (!available) {
+ *   console.error('Plesk CLI not available. Make sure you are on a Plesk server.');
+ *   process.exit(1);
+ * }
  */
 async function testPleskCLI() {
     const command = `${PLESK_BIN} --help`;
