@@ -239,6 +239,7 @@ if (require.main === module && process.argv.includes('--test')) {
     const testStudent = {
         full_name: 'John Doe',
         degree: 'B',
+        registration_date: '2020',
         graduation_year: '2024',
         student_card_number: '123456789012'
     };

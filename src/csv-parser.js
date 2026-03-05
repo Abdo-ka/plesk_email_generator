@@ -29,6 +29,24 @@ const { isValidDegree } = require('./email-generator');
 const REQUIRED_FIELDS = ['full_name', 'degree', 'registration_date', 'years_to_graduate', 'student_card_number'];
 
 /**
+ * Convert scientific notation string to full numeric string.
+ * Handles values like '1.23457E+11' that Excel produces for large numbers.
+ *
+ * @param {string} value - Raw string value from CSV
+ * @returns {string} Normalized numeric string, or original value if not scientific notation
+ */
+function normalizeNumericValue(value) {
+    const trimmed = value.trim();
+    if (/^-?\d+\.?\d*[eE][+\-]?\d+$/.test(trimmed)) {
+        const num = Number(trimmed);
+        if (!isNaN(num) && isFinite(num)) {
+            return num.toFixed(0);
+        }
+    }
+    return trimmed;
+}
+
+/**
  * Validate a single student record
  * 
  * Performs comprehensive validation on a student record:
@@ -94,7 +112,7 @@ function validateStudent(student, lineNumber) {
     }
 
     // Validate student card number (must be numeric and at least 4 digits)
-    const cardNumber = student.student_card_number.trim();
+    const cardNumber = normalizeNumericValue(student.student_card_number);
     if (!/^\d+$/.test(cardNumber)) {
         errors.push(`Line ${lineNumber}: Invalid student card number '${cardNumber}'. Must be numeric`);
     } else if (cardNumber.length < 4) {
@@ -133,7 +151,7 @@ function normalizeStudent(student) {
         degree: student.degree.trim().toUpperCase(),
         registration_date: student.registration_date.trim(),
         graduation_year: graduationYear.toString(),
-        student_card_number: student.student_card_number.trim()
+        student_card_number: normalizeNumericValue(student.student_card_number)
     };
 }
 
@@ -299,14 +317,16 @@ if (require.main === module && process.argv.includes('--test')) {
     const testStudent1 = {
         full_name: 'John Doe',
         degree: 'B',
-        graduation_year: '2024',
+        registration_date: '2020',
+        years_to_graduate: '4',
         student_card_number: '123456789012'
     };
 
     const testStudent2 = {
         full_name: '',
         degree: 'X',
-        graduation_year: '24',
+        registration_date: '24',
+        years_to_graduate: 'abc',
         student_card_number: 'abc'
     };
 
@@ -328,5 +348,6 @@ module.exports = {
     parseAndValidate,
     validateStudent,
     detectDuplicates,
-    normalizeStudent
+    normalizeStudent,
+    normalizeNumericValue
 };
