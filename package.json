@@ -1,6 +1,6 @@
 {
   "name": "plesk-email-generator",
-  "version": "7.0.0",
+  "version": "9.0.0",
   "description": "Production-ready CLI tool for automated Plesk email account creation and deletion from CSV data",
   "main": "src/index.js",
   "bin": {
