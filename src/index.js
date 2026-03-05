@@ -55,7 +55,7 @@ function displayBanner() {
     console.clear();
     console.log(chalk.cyan.bold('\n==================================================='));
     console.log(chalk.cyan.bold('                                                   '));
-    console.log(chalk.cyan.bold('      PLESK EMAIL ACCOUNT GENERATOR v10.1.0         '));
+    console.log(chalk.cyan.bold('      PLESK EMAIL ACCOUNT GENERATOR v10.3.0         '));
     console.log(chalk.cyan.bold('                                                   '));
     console.log(chalk.cyan.bold('   Automated bulk email creation for students      '));
     console.log(chalk.cyan.bold('                                                   '));

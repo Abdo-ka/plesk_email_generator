@@ -182,19 +182,11 @@ async function createMailbox(email, password, quota, description, dryRun = false
     }
 
     // Enable antivirus protection (incoming and outgoing)
-    const antivirusCommand = `${PLESK_BIN} -u ${email} -antivirus in`;
+    const antivirusCommand = `${PLESK_BIN} -u ${email} -antivirus inout`;
     const antivirusResult = await executeCommand(antivirusCommand);
 
     if (!antivirusResult.success) {
         console.warn(`Warning: Failed to enable antivirus for ${email}`);
-    }
-
-    // Enable spam filter (move spam to Spam folder)
-    const spamfilterCommand = `${PLESK_BIN} -u ${email} -spam_filter on`;
-    const spamfilterResult = await executeCommand(spamfilterCommand);
-
-    if (!spamfilterResult.success) {
-        console.warn(`Warning: Failed to enable spam filter for ${email}`);
     }
 
     return {
@@ -301,7 +293,7 @@ async function listMailboxes() {
 
     // Parse output to get email addresses
     const emails = result.stdout
-        .split('\\n')
+        .split('\n')
         .map(line => line.trim())
         .filter(line => line && line.includes('@'));
 
